@@ -1,6 +1,6 @@
 from twikit import Client
 import pandas as pd
-from config import USERNAME, EMAIL, PASSWORD
+from src.config import USERNAME, EMAIL, PASSWORD
 # Initialize client
 client = Client('en-UK')
 
