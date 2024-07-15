@@ -13,7 +13,7 @@ async def main() -> list[list]:
     The search_tweet function gets the most recent 20 tweets, maybe we create a large
     csv and just run the update funciton every once in a while which should keep the
     dashboard updated? If so, we should append after the tweets are cleaned, which 
-    can be done in the clean_data file.
+    can be done in the clean_data file!
     """
     await client.login(
         auth_info_1=USERNAME ,
