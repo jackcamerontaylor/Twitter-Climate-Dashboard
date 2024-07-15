@@ -1,0 +1,8 @@
+# can be updated using pipreqs
+
+dash==2.17.1
+pandas==2.2.2
+plotly==5.22.0
+setuptools==70.3.0
+textblob==0.18.0.post0
+twikit==2.0.2
