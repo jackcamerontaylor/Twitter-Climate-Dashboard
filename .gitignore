@@ -1,2 +1,4 @@
 # ignore config file
 src/config.py
+
+data/
