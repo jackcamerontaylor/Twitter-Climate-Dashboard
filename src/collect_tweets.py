@@ -27,7 +27,8 @@ async def main() -> list[list]:
     for tweet in tweets:
         # need to append as much MEANINGFUL information as possible
         # FIXME: Can add more from here https://twikit.readthedocs.io/en/latest/twikit.html#twikit.client.client.Client.search_tweet
-        tweets_data.append([tweet.user.id, # this should be the unique identifier of the user
+        tweets_data.append([tweet.id,
+                            tweet.user.id, # this should be the unique identifier of the user
                             tweet.user.location,
                             tweet.user.possibly_sensitive, # are they snowflakes?...
                             tweet.user.followers_count,

@@ -23,13 +23,14 @@ def analyse_sentiment(tweet):
     """
     analysis = hugging_face_tweet_sentiment(tweet)
 
-    return analysis[0]
+    return analysis[0]['score']
 
 def clean_tweets(tweets: list) -> pd.DataFrame:
     """
     This will take the output from the collect_tweets model and clean it.
     """
     df = pd.DataFrame(tweets, columns=[
+        'Tweet ID',               # Used to drop the same tweets
         'User ID',                # Unique identifier of the user
         'Location',               # User's location
         'Sensitive',              # Indicates if the users content is sensitive
@@ -46,12 +47,33 @@ def clean_tweets(tweets: list) -> pd.DataFrame:
 
     df['Sentiment'] = df['Tweet Text'].apply(analyse_sentiment)
 
-    print(df[['Tweet Text', 'Sentiment']])
+    df['Location'] = df['Location'].fillna('Unknown')
+
+    # df.to_csv("tweets_store/tweets.csv")
+
+    return df
 
 def update_tweets(clean_tweets: pd.DataFrame):
     """
     This will merge the clean tweets with the already clean ones in the csv.
     """
+    tweets = pd.read_csv("tweets_store/tweets.csv")
+
+    concat = pd.concat([tweets, clean_tweets], ignore_index=True)
+
+    concat.drop('Unnamed: 0', axis=1, inplace=True)
+
+    concat.drop_duplicates('Tweet Text', inplace=True)
+
+    concat.to_csv("tweets_store/tweets.csv")
+
+    # print(clean_tweets)
+
+    # print(pd.concat([tweets, clean_tweets], ignore_index=True))
+
+    # tweets.drop_duplicates()
+
+    # tweets.to_csv("tweets_store/tweets.csv")
 
 def clean_data(tweets: list):
     """

@@ -1,4 +1,4 @@
 # ignore config file
 src/config.py
 
-data/
+tweets_store/
