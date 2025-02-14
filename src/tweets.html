@@ -1,0 +1,353 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Display</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-top: 20px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        h4.subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        table {
+            width: 90%;
+            max-width: 1200px;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #3498db;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .cell {
+            word-break: break-word;
+        }
+
+        #chartContainer,
+        #wordCloudContainer {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+
+        #wordCloud {
+            width: 100%;
+            height: 500px;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 20px 0;
+            font-size: 1em;
+            color: #fff;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.1.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+    <h1>Tweet Dashboard</h1>
+    <h4 class="subtitle">This project has collected information on tweets with the keywords Scotland and Climate Change. Here we present our findings.</h4>
+    
+    <h2 class="subtitle">Word Cloud using a bi and tri gram model</h2>
+    <div id="wordCloudContainer">
+        <canvas id="wordCloud"></canvas>
+    </div>
+
+    <h2 class="subtitle">Top 5 Most Popular Tweets</h2>
+    <table id="top5Table"></table>
+
+    <h2 class="subtitle">Sentiment Distribution</h2>
+    <div id="chartContainer">
+        <canvas id="sentimentChart"></canvas>
+    </div>
+
+    <h2 class="subtitle">All Tweets</h2>
+    <table id="csvTable"></table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('tweets.csv') // Adjust the path to where your CSV file is located
+                .then(response => response.text())
+                .then(csv => {
+                    Papa.parse(csv, {
+                        header: true,
+                        dynamicTyping: true,
+                        complete: (results) => {
+                            const data = results.data;
+
+                            // Render word cloud
+                            renderWordCloud(data);
+
+                            // Render top 5 most popular tweets
+                            renderTop5Table(data);
+
+                            // Render the full table
+                            renderTable(data);
+
+                            // Render sentiment distribution chart
+                            renderSentimentChart(data);
+                        },
+                        error: (error) => console.error('Error parsing CSV file:', error)
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV file:', error));
+        });
+
+        function renderTop5Table(rows) {
+            const table = document.getElementById('top5Table');
+
+            // Define the columns you want to display
+            const columnsToShow = ['Tweet Text', 'Favorite Count', 'Retweet Count'];
+
+            // Calculate popularity and sort by it
+            rows.forEach(row => {
+                const likes = parseInt(row['Favorite Count'] || 0, 10);
+                const retweets = parseInt(row['Retweet Count'] || 0, 10);
+                row['Popularity'] = likes + retweets; // Add a new column for popularity
+            });
+
+            // Sort rows by popularity (highest first)
+            rows.sort((a, b) => b['Popularity'] - a['Popularity']);
+
+            // Get top 5 rows
+            const top5Rows = rows.slice(0, 5);
+
+            // Create table header
+            let tableHtml = '<thead><tr>';
+            columnsToShow.forEach(col => {
+                tableHtml += `<th>${col}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+
+            // Create table rows
+            top5Rows.forEach(row => {
+                tableHtml += '<tr>';
+                columnsToShow.forEach(col => {
+                    tableHtml += `<td class="cell">${row[col] || ''}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody>';
+            table.innerHTML = tableHtml;
+        }
+
+        function renderTable(rows) {
+            const table = document.getElementById('csvTable');
+
+            // Define the columns you want to show and their new names
+            const columnNameMapping = {
+                'Tweet Text': 'Tweet Content',
+                'Favorite Count': 'Likes',
+                'Retweet Count': 'Retweets',
+                'Sentiment': 'Sentiment',
+            };
+
+            // Define the columns you want to display
+            const columnsToShow = ['Tweet Text', 'Favorite Count', 'Retweet Count', 'Sentiment'];
+
+            // Create table header
+            let tableHtml = '<thead><tr>';
+            columnsToShow.forEach(col => {
+                const displayName = columnNameMapping[col] || col;
+                tableHtml += `<th>${displayName}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+
+            // Create table rows
+            rows.forEach(row => {
+                tableHtml += '<tr>';
+                columnsToShow.forEach(col => {
+                    let cellValue = row[col] || '';
+                    if (col === 'Sentiment') {
+                        try {
+                            // Convert single quotes to double quotes for valid JSON parsing
+                            cellValue = cellValue.replace(/'/g, '"');
+                            const sentiment = JSON.parse(cellValue);
+                            cellValue = sentiment.label || 'Unknown';
+                        } catch {
+                            cellValue = 'Invalid JSON';
+                        }
+                    }
+                    tableHtml += `<td class="cell">${cellValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody>';
+            table.innerHTML = tableHtml;
+        }
+
+        function renderSentimentChart(rows) {
+            const sentimentCounts = {
+                'POS': 0,
+                'NEU': 0,
+                'NEG': 0,
+            };
+
+            rows.forEach(row => {
+                const sentimentJson = row['Sentiment'] || '{}';
+                try {
+                    // Convert single quotes to double quotes for valid JSON parsing
+                    const sentiment = JSON.parse(sentimentJson.replace(/'/g, '"'));
+                    if (sentimentCounts.hasOwnProperty(sentiment.label)) {
+                        sentimentCounts[sentiment.label] = (sentimentCounts[sentiment.label] || 0) + 1;
+                    }
+                } catch {
+                    // Ignore invalid JSON
+                }
+            });
+
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['POS', 'NEU', 'NEG'],
+                    datasets: [{
+                        label: 'Number of Tweets',
+                        data: [sentimentCounts['POS'], sentimentCounts['NEU'], sentimentCounts['NEG']],
+                        backgroundColor: [
+                            'rgba(76, 175, 80, 0.5)', // Green for POS
+                            'rgba(255, 193, 7, 0.5)', // Yellow for NEU
+                            'rgba(244, 67, 54, 0.5)', // Red for NEG
+                        ],
+                        borderColor: [
+                            'rgba(76, 175, 80, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(244, 67, 54, 1)',
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderWordCloud(rows) {
+            const text = rows.map(row => row['Tweet Text']).join(' ');
+            const wordsArray = text.split(/\s+/);
+
+            // Frequency analysis for bi-grams and tri-grams
+            const wordCounts = {};
+            for (let i = 0; i < wordsArray.length - 1; i++) {
+                const biGram = `${wordsArray[i]} ${wordsArray[i + 1]}`;
+                wordCounts[biGram] = (wordCounts[biGram] || 0) + 1;
+
+                if (i < wordsArray.length - 2) {
+                    const triGram = `${wordsArray[i]} ${wordsArray[i + 1]} ${wordsArray[i + 2]}`;
+                    wordCounts[triGram] = (wordCounts[triGram] || 0) + 1;
+                }
+            }
+
+            const wordCloudData = Object.entries(wordCounts).map(([word, count]) => ({ text: word, weight: count }));
+
+            // Render word cloud using Canvas
+            const canvas = document.getElementById('wordCloud');
+            const context = canvas.getContext('2d');
+            
+            // Set canvas size and scale for higher resolution
+            // const width = 1200; // Desired width
+            // const height = 600; // Desired height
+            // const scaleFactor = 1; // Scale factor for better resolution
+            canvas.width = 1200;
+            canvas.height = 600;
+            // canvas.style.width = `${width}px`;
+            // canvas.style.height = `${height}px`;
+            // context.scale(scaleFactor, scaleFactor);
+
+            WordCloud(canvas, {
+                list: wordCloudData.map(item => [item.text, item.weight]),
+                gridSize: 20, // Smaller grid size for better clarity
+                weightFactor: 20, // Adjust weight factor for more words
+                minSize: 28, // Minimum font size
+                maxSize: 100, // Maximum font size
+                fontFamily: 'Times, serif',
+                color: 'random-dark',
+                backgroundColor: '#f4f7f6'
+            });
+    }
+
+    </script>
+</body>
+</html>

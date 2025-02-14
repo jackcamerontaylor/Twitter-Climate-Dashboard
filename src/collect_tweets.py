@@ -1,5 +1,7 @@
 from twikit import Client
 import pandas as pd
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 
 from .config import USERNAME, EMAIL, PASSWORD
 
@@ -21,13 +23,16 @@ async def main() -> list[list]:
         password=PASSWORD
     )
 
-    tweets = await client.search_tweet('ClimateChange OR GlobalWarming OR Sustainability', 'Latest')
+    today = date.today()
+    last_month = today - relativedelta(month=1)
+    tweets = await client.search_tweet(f'"climate change" AND "Scotland" since:{last_month.strftime("%Y-%m-%d")} until:{today.strftime("%Y-%m-%d")}', 'Top')
 
     tweets_data = []
     for tweet in tweets:
         # need to append as much MEANINGFUL information as possible
         # FIXME: Can add more from here https://twikit.readthedocs.io/en/latest/twikit.html#twikit.client.client.Client.search_tweet
-        tweets_data.append([tweet.user.id, # this should be the unique identifier of the user
+        tweets_data.append([tweet.id,
+                            tweet.user.id, # this should be the unique identifier of the user
                             tweet.user.location,
                             tweet.user.possibly_sensitive, # are they snowflakes?...
                             tweet.user.followers_count,
@@ -39,12 +44,3 @@ async def main() -> list[list]:
                             tweet.retweet_count])
         
     return tweets_data
-        
-
-# # Convert the list to a pandas DataFrame
-# df = pd.DataFrame(tweets_data, columns=['User', 'Date', 'Tweet', 'Location', 'Likes', 'Retweets'])
-
-# # Save the DataFrame to a CSV file
-# df.to_csv('data/climate_change_tweets.csv', index=False)
-
-# print("Data collection complete. Tweets saved to climate_change_tweets.csv")
